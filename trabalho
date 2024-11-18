@@ -1,0 +1,126 @@
+index.php
+
+<?php
+include 'database.php';
+
+$tarefas = $db->query("SELECT * FROM tarefas ORDER BY data_vencimento");
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header("Location: index.php");
+    exit();
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerenciador de Tarefas</title>
+</head>
+<body>
+    <h1>Lista de Tarefas</h1>
+
+    <h2>Adicionar Nova Tarefa</h2>
+    <form action="add_tarefa.php" method="POST">
+        <input type="text" name="descricao" placeholder="Descrição" required>
+        <input type="date" name="data_vencimento" required>
+        <button type="submit">Adicionar</button>
+    </form>
+
+    <h2>Tarefas Não Concluídas</h2>
+    <ul>
+        <?php foreach ($tarefas as $tarefa): ?>
+            <?php if (!$tarefa['concluida']): ?>
+                <li>
+                    <?php echo htmlspecialchars($tarefa['descricao']); ?> - Vence em: <?php echo htmlspecialchars($tarefa['data_vencimento']); ?>
+                    <a href="update_tarefa.php?id=<?php echo $tarefa['id']; ?>">Marcar como Concluída</a>
+                    <a href="delete_tarefa.php?id=<?php echo $tarefa['id']; ?>">Excluir</a>
+                </li>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </ul>
+
+    <h2>Tarefas Concluídas</h2>
+    <ul>
+        <?php foreach ($tarefas as $tarefa): ?>
+            <?php if ($tarefa['concluida']): ?>
+                <li>
+                    <?php echo htmlspecialchars($tarefa['descricao']); ?> - Venceu em: <?php echo htmlspecialchars($tarefa['data_vencimento']); ?>
+                    <a href="delete_tarefa.php?id=<?php echo $tarefa['id']; ?>">Excluir</a>
+                </li>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </ul>
+</body>
+</html>
+----------------------------------------------------------------------------------------------------------
+database.php
+
+<?php
+try {
+    $db = new PDO('sqlite:replit_tarefas.db');
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $db->exec("CREATE TABLE IF NOT EXISTS tarefas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        descricao TEXT NOT NULL,
+        data_vencimento DATE,
+        concluida BOOLEAN DEFAULT 0
+    )");
+} catch (Exception $e) {
+    echo "Erro ao conectar ao banco de dados: " . $e->getMessage();
+    exit();
+}
+?>
+-----------------------------------------------------------------------------------------------------
+add_tarefa.php
+
+<?php
+include 'database.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $descricao = $_POST['descricao'];
+    $data_vencimento = $_POST['data_vencimento'];
+
+    $stmt = $db->prepare("INSERT INTO tarefas (descricao, data_vencimento) VALUES (:descricao, :data_vencimento)");
+    $stmt->bindParam(':descricao', $descricao);
+    $stmt->bindParam(':data_vencimento', $data_vencimento);
+    $stmt->execute();
+
+    header("Location: index.php");
+    exit();
+}
+?>
+---------------------------------------------------------------------------------------------------------
+update_tarefa.php
+
+<?php
+include 'database.php';
+
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    $stmt = $db->prepare("UPDATE tarefas SET concluida = 1 WHERE id = :id");
+    $stmt->bindParam(':id', $id);
+    $stmt->execute();
+}
+
+header("Location: index.php");
+exit();
+?>
+--------------------------------------------------------------------------------------------------
+delete_tarefa.php
+
+<?php
+include 'database.php';
+
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    $stmt = $db->prepare("DELETE FROM tarefas WHERE id = :id");
+    $stmt->bindParam(':id', $id);
+    $stmt->execute();
+}
+
+header("Location: index.php");
+exit();
+?>
+-----------------------------------------------------------------------------------------------------
